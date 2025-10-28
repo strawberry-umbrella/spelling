@@ -5,12 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spelling Trainer</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .circle {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: conic-gradient(#e11d48 0deg, #e11d48 0deg, #e5e7eb 0deg 360deg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: auto;
+    }
+    .circle-inner {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: #374151;
+    }
+  </style>
 </head>
 <body class="bg-blue-50 flex flex-col items-center min-h-screen p-6">
   <h1 class="text-3xl font-bold mb-4 text-blue-800">Spelling Trainer</h1>
 
   <!-- File loading -->
-  <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md mb-4">
+  <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md mb-4" id="fileSection">
     <h2 class="text-lg font-semibold mb-2 text-gray-700">Load word lists</h2>
     <input type="file" id="fileInput" accept=".csv" multiple class="mb-3" />
     <div id="fileList" class="text-sm text-gray-600"></div>
@@ -36,7 +62,11 @@
     </div>
 
     <h2 id="hebrewWord" class="text-2xl font-bold text-blue-700 mb-2 text-center"></h2>
-    <p id="attemptInfo" class="text-sm text-gray-600 text-center mb-4"></p>
+
+    <!-- Circle for attempt visualization -->
+    <div class="circle mb-4">
+      <div class="circle-inner" id="circleText">0/3</div>
+    </div>
 
     <input id="englishInput" type="text" placeholder="Type the English word..."
       class="border p-2 w-full rounded-md mb-3" />
@@ -47,16 +77,19 @@
     </div>
 
     <p id="feedback" class="mt-4 text-center text-lg"></p>
+
+    <button id="startOverBtn" class="hidden mt-6 bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-500">
+      🔁 Start Over
+    </button>
   </div>
 
   <script>
     let allWords = [];
     let wordsToTrain = [];
     let currentWord = null;
-    let mode = null; // 'train' or 'test'
+    let mode = null;
     let mastered = {};
     let correctCount = {};
-    let attemptCount = {};
     let testResults = [];
     let startTime;
 
@@ -70,7 +103,9 @@
     const progressBar = document.getElementById("progressBar");
     const progressText = document.getElementById("progressText");
     const wordProgressText = document.getElementById("wordProgressText");
-    const attemptInfo = document.getElementById("attemptInfo");
+    const circleText = document.getElementById("circleText");
+    const startOverBtn = document.getElementById("startOverBtn");
+    const circle = document.querySelector(".circle");
 
     fileInput.addEventListener("change", async (e) => {
       const files = Array.from(e.target.files);
@@ -89,20 +124,21 @@
       modeSection.classList.remove("hidden");
     });
 
-    document.getElementById("trainBtn").addEventListener("click", () => startGame('train'));
-    document.getElementById("testBtn").addEventListener("click", () => startGame('test'));
+    document.getElementById("trainBtn").addEventListener("click", () => startGame("train"));
+    document.getElementById("testBtn").addEventListener("click", () => startGame("test"));
 
     function startGame(selectedMode) {
       mode = selectedMode;
       wordsToTrain = [...allWords];
       mastered = {};
       correctCount = {};
-      attemptCount = {};
       testResults = [];
       startTime = Date.now();
 
       modeSection.classList.add("hidden");
       gameArea.classList.remove("hidden");
+      startOverBtn.classList.add("hidden");
+      englishInput.disabled = false;
       nextWord();
       updateProgress();
     }
@@ -111,47 +147,58 @@
       const total = allWords.length;
       let doneCount = 0;
 
-      if (mode === 'train') {
+      if (mode === "train") {
         doneCount = Object.keys(mastered).length;
-      } else if (mode === 'test') {
+      } else if (mode === "test") {
         doneCount = testResults.length;
       }
 
-      const percent = Math.round((doneCount / total) * 100);
+      const percent = Math.min(Math.round((doneCount / total) * 100), 100);
       progressBar.style.width = percent + "%";
       progressText.textContent = `Progress: ${percent}%`;
-      wordProgressText.textContent = `Word: ${doneCount + 1} / ${total}`;
+      wordProgressText.textContent = `Word: ${Math.min(doneCount + 1, total)} / ${total}`;
+    }
+
+    function updateCircleProgress(attempts) {
+      const degrees = Math.min(attempts * 120, 360); // 3 attempts = 360 degrees
+      const colors = ["#e11d48", "#f97316", "#16a34a"];
+      const color = colors[Math.min(attempts - 1, 2)];
+      circle.style.background = `conic-gradient(${color} ${degrees}deg, #e5e7eb ${degrees}deg 360deg)`;
+      circleText.textContent = `${attempts}/3`;
     }
 
     function nextWord() {
-      if (mode === 'train') {
+      if (mode === "train") {
         wordsToTrain = wordsToTrain.filter(w => !mastered[w.hebrew]);
         if (wordsToTrain.length === 0) {
-          feedback.textContent = "🎉 All words mastered!";
+          feedback.innerHTML = "🎉 All words mastered!";
           hebrewWordEl.textContent = "";
           englishInput.disabled = true;
+          startOverBtn.classList.remove("hidden");
           updateProgress();
           return;
         }
-      } else if (mode === 'test' && testResults.length >= allWords.length) {
+      } else if (mode === "test" && testResults.length >= allWords.length) {
         const total = allWords.length;
         const correct = testResults.filter(r => r.correct).length;
         const time = ((Date.now() - startTime) / 1000).toFixed(1);
         feedback.innerHTML = `✅ Test complete!<br>Score: ${correct}/${total}<br>Time: ${time}s`;
         hebrewWordEl.textContent = "";
         englishInput.disabled = true;
+        startOverBtn.classList.remove("hidden");
         updateProgress();
         return;
       }
 
-      currentWord = (mode === 'train')
+      currentWord = (mode === "train")
         ? wordsToTrain[Math.floor(Math.random() * wordsToTrain.length)]
         : allWords[testResults.length];
 
-      attemptCount[currentWord.hebrew] = (attemptCount[currentWord.hebrew] || 0) + 1;
+      correctCount[currentWord.hebrew] = correctCount[currentWord.hebrew] || 0;
+      const attempts = correctCount[currentWord.hebrew] + 1;
+      updateCircleProgress(attempts);
 
       hebrewWordEl.textContent = currentWord.hebrew;
-      attemptInfo.textContent = `Attempt ${attemptCount[currentWord.hebrew]} for this word`;
       englishInput.value = "";
       feedback.textContent = "";
       englishInput.disabled = false;
@@ -168,10 +215,12 @@
         feedback.className = "mt-4 text-green-600 text-center";
 
         correctCount[currentWord.hebrew] = (correctCount[currentWord.hebrew] || 0) + 1;
-        if (mode === 'train' && correctCount[currentWord.hebrew] >= 3) {
+        updateCircleProgress(correctCount[currentWord.hebrew]);
+
+        if (mode === "train" && correctCount[currentWord.hebrew] >= 3) {
           mastered[currentWord.hebrew] = true;
         }
-        if (mode === 'test') {
+        if (mode === "test") {
           testResults.push({ word: currentWord.hebrew, correct: true });
         }
 
@@ -180,7 +229,7 @@
         feedback.textContent = "❌ Incorrect. Try again.";
         feedback.className = "mt-4 text-red-600 text-center";
 
-        if (mode === 'test') {
+        if (mode === "test") {
           testResults.push({ word: currentWord.hebrew, correct: false });
           setTimeout(nextWord, 1000);
         }
@@ -192,11 +241,17 @@
       feedback.textContent = `💡 The correct spelling: ${currentWord.english}`;
       feedback.className = "mt-4 text-blue-600 text-center";
 
-      if (mode === 'train') correctCount[currentWord.hebrew] = 0;
-      if (mode === 'test') testResults.push({ word: currentWord.hebrew, correct: false });
+      if (mode === "train") correctCount[currentWord.hebrew] = 0;
+      if (mode === "test") testResults.push({ word: currentWord.hebrew, correct: false });
 
       setTimeout(nextWord, 1500);
       updateProgress();
+    });
+
+    startOverBtn.addEventListener("click", () => {
+      feedback.textContent = "";
+      gameArea.classList.add("hidden");
+      modeSection.classList.remove("hidden");
     });
   </script>
 </body>
