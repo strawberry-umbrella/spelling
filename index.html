@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spelling Trainer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 flex flex-col items-center min-h-screen p-6">
+
+  <h1 class="text-3xl font-bold mb-4 text-blue-800">Spelling Trainer</h1>
+
+  <!-- File loading -->
+  <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md mb-4">
+    <h2 class="text-lg font-semibold mb-2 text-gray-700">Load word lists</h2>
+    <input type="file" id="fileInput" accept=".csv" multiple class="mb-3" />
+    <div id="fileList" class="text-sm text-gray-600"></div>
+  </div>
+
+  <!-- Mode selection -->
+  <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md mb-4 hidden" id="modeSection">
+    <h2 class="text-lg font-semibold mb-2 text-gray-700">Choose mode</h2>
+    <button id="trainBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 m-2">Training Mode</button>
+    <button id="testBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 m-2">Test Mode</button>
+  </div>
+
+  <!-- Game Area -->
+  <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md hidden" id="gameArea">
+    <h2 id="hebrewWord" class="text-2xl font-bold text-blue-700 mb-4 text-center"></h2>
+
+    <input id="englishInput" type="text" placeholder="Type the English word..."
+      class="border p-2 w-full rounded-md mb-3" />
+
+    <div class="flex justify-center space-x-4">
+      <button id="submitBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Submit</button>
+      <button id="giveUpBtn" class="bg-gray-300 text-black px-4 py-2 rounded-lg hover:bg-gray-400">Give up</button>
+    </div>
+
+    <p id="feedback" class="mt-4 text-center text-lg"></p>
+  </div>
+
+  <script>
+    let allWords = [];
+    let wordsToTrain = [];
+    let currentWord = null;
+    let mode = null; // 'train' or 'test'
+    let mastered = {};
+    let correctCount = {};
+    let startTime;
+
+    const fileInput = document.getElementById("fileInput");
+    const fileList = document.getElementById("fileList");
+    const modeSection = document.getElementById("modeSection");
+    const gameArea = document.getElementById("gameArea");
+    const hebrewWordEl = document.getElementById("hebrewWord");
+    const englishInput = document.getElementById("englishInput");
+    const feedback = document.getElementById("feedback");
+
+    // Load CSVs
+    fileInput.addEventListener("change", async (e) => {
+      const files = Array.from(e.target.files);
+      fileList.innerHTML = files.map(f => f.name).join("<br>");
+      allWords = [];
+
+      for (const file of files) {
+        const text = await file.text();
+        const rows = text.trim().split(/\r?\n/).map(r => r.split(","));
+        allWords.push(...rows.map(([hebrew, english]) => ({ hebrew, english: english.trim().toLowerCase() })));
+      }
+
+      modeSection.classList.remove("hidden");
+    });
+
+    document.getElementById("trainBtn").addEventListener("click", () => startGame('train'));
+    document.getElementById("testBtn").addEventListener("click", () => startGame('test'));
+
+    function startGame(selectedMode) {
+      mode = selectedMode;
+      wordsToTrain = [...allWords];
+      mastered = {};
+      correctCount = {};
+      startTime = Date.now();
+
+      modeSection.classList.add("hidden");
+      gameArea.classList.remove("hidden");
+      nextWord();
+    }
+
+    function nextWord() {
+      if (mode === 'train') {
+        wordsToTrain = wordsToTrain.filter(w => !mastered[w.hebrew]);
+        if (wordsToTrain.length === 0) {
+          feedback.textContent = "🎉 All words mastered!";
+          hebrewWordEl.textContent = "";
+          englishInput.disabled = true;
+          return;
+        }
+      }
+
+      currentWord = wordsToTrain[Math.floor(Math.random() * wordsToTrain.length)];
+      hebrewWordEl.textContent = currentWord.hebrew;
+      englishInput.value = "";
+      feedback.textContent = "";
+      englishInput.focus();
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", () => {
+      const answer = englishInput.value.trim().toLowerCase();
+      if (!currentWord) return;
+
+      if (answer === currentWord.english) {
+        feedback.textContent = "✅ Correct!";
+        feedback.className = "mt-4 text-green-600 text-center";
+
+        correctCount[currentWord.hebrew] = (correctCount[currentWord.hebrew] || 0) + 1;
+        if (correctCount[currentWord.hebrew] >= 3) mastered[currentWord.hebrew] = true;
+
+        setTimeout(nextWord, 800);
+      } else {
+        feedback.textContent = "❌ Incorrect. Try again.";
+        feedback.className = "mt-4 text-red-600 text-center";
+        if (mode === 'test') setTimeout(nextWord, 1000);
+      }
+    });
+
+    document.getElementById("giveUpBtn").addEventListener("click", () => {
+      feedback.textContent = `💡 The correct spelling: ${currentWord.english}`;
+      feedback.className = "mt-4 text-blue-600 text-center";
+      correctCount[currentWord.hebrew] = 0;
+      setTimeout(nextWord, 1500);
+    });
+  </script>
+</body>
+</html>
