@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-blue-50 flex flex-col items-center min-h-screen p-6">
-
   <h1 class="text-3xl font-bold mb-4 text-blue-800">Spelling Trainer</h1>
 
   <!-- File loading -->
@@ -26,7 +25,18 @@
 
   <!-- Game Area -->
   <div class="bg-white p-4 rounded-xl shadow-md w-full max-w-md hidden" id="gameArea">
-    <h2 id="hebrewWord" class="text-2xl font-bold text-blue-700 mb-4 text-center"></h2>
+    <div class="mb-3">
+      <div class="flex justify-between text-sm text-gray-600 mb-1">
+        <span id="progressText">Progress: 0%</span>
+        <span id="wordProgressText">Word: 0 / 0</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-3">
+        <div id="progressBar" class="bg-blue-500 h-3 rounded-full" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <h2 id="hebrewWord" class="text-2xl font-bold text-blue-700 mb-2 text-center"></h2>
+    <p id="attemptInfo" class="text-sm text-gray-600 text-center mb-4"></p>
 
     <input id="englishInput" type="text" placeholder="Type the English word..."
       class="border p-2 w-full rounded-md mb-3" />
@@ -46,6 +56,8 @@
     let mode = null; // 'train' or 'test'
     let mastered = {};
     let correctCount = {};
+    let attemptCount = {};
+    let testResults = [];
     let startTime;
 
     const fileInput = document.getElementById("fileInput");
@@ -55,8 +67,11 @@
     const hebrewWordEl = document.getElementById("hebrewWord");
     const englishInput = document.getElementById("englishInput");
     const feedback = document.getElementById("feedback");
+    const progressBar = document.getElementById("progressBar");
+    const progressText = document.getElementById("progressText");
+    const wordProgressText = document.getElementById("wordProgressText");
+    const attemptInfo = document.getElementById("attemptInfo");
 
-    // Load CSVs
     fileInput.addEventListener("change", async (e) => {
       const files = Array.from(e.target.files);
       fileList.innerHTML = files.map(f => f.name).join("<br>");
@@ -65,7 +80,10 @@
       for (const file of files) {
         const text = await file.text();
         const rows = text.trim().split(/\r?\n/).map(r => r.split(","));
-        allWords.push(...rows.map(([hebrew, english]) => ({ hebrew, english: english.trim().toLowerCase() })));
+        allWords.push(...rows.map(([hebrew, english]) => ({
+          hebrew,
+          english: english.trim().toLowerCase()
+        })));
       }
 
       modeSection.classList.remove("hidden");
@@ -79,11 +97,30 @@
       wordsToTrain = [...allWords];
       mastered = {};
       correctCount = {};
+      attemptCount = {};
+      testResults = [];
       startTime = Date.now();
 
       modeSection.classList.add("hidden");
       gameArea.classList.remove("hidden");
       nextWord();
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const total = allWords.length;
+      let doneCount = 0;
+
+      if (mode === 'train') {
+        doneCount = Object.keys(mastered).length;
+      } else if (mode === 'test') {
+        doneCount = testResults.length;
+      }
+
+      const percent = Math.round((doneCount / total) * 100);
+      progressBar.style.width = percent + "%";
+      progressText.textContent = `Progress: ${percent}%`;
+      wordProgressText.textContent = `Word: ${doneCount + 1} / ${total}`;
     }
 
     function nextWord() {
@@ -93,15 +130,33 @@
           feedback.textContent = "🎉 All words mastered!";
           hebrewWordEl.textContent = "";
           englishInput.disabled = true;
+          updateProgress();
           return;
         }
+      } else if (mode === 'test' && testResults.length >= allWords.length) {
+        const total = allWords.length;
+        const correct = testResults.filter(r => r.correct).length;
+        const time = ((Date.now() - startTime) / 1000).toFixed(1);
+        feedback.innerHTML = `✅ Test complete!<br>Score: ${correct}/${total}<br>Time: ${time}s`;
+        hebrewWordEl.textContent = "";
+        englishInput.disabled = true;
+        updateProgress();
+        return;
       }
 
-      currentWord = wordsToTrain[Math.floor(Math.random() * wordsToTrain.length)];
+      currentWord = (mode === 'train')
+        ? wordsToTrain[Math.floor(Math.random() * wordsToTrain.length)]
+        : allWords[testResults.length];
+
+      attemptCount[currentWord.hebrew] = (attemptCount[currentWord.hebrew] || 0) + 1;
+
       hebrewWordEl.textContent = currentWord.hebrew;
+      attemptInfo.textContent = `Attempt ${attemptCount[currentWord.hebrew]} for this word`;
       englishInput.value = "";
       feedback.textContent = "";
+      englishInput.disabled = false;
       englishInput.focus();
+      updateProgress();
     }
 
     document.getElementById("submitBtn").addEventListener("click", () => {
@@ -113,21 +168,35 @@
         feedback.className = "mt-4 text-green-600 text-center";
 
         correctCount[currentWord.hebrew] = (correctCount[currentWord.hebrew] || 0) + 1;
-        if (correctCount[currentWord.hebrew] >= 3) mastered[currentWord.hebrew] = true;
+        if (mode === 'train' && correctCount[currentWord.hebrew] >= 3) {
+          mastered[currentWord.hebrew] = true;
+        }
+        if (mode === 'test') {
+          testResults.push({ word: currentWord.hebrew, correct: true });
+        }
 
         setTimeout(nextWord, 800);
       } else {
         feedback.textContent = "❌ Incorrect. Try again.";
         feedback.className = "mt-4 text-red-600 text-center";
-        if (mode === 'test') setTimeout(nextWord, 1000);
+
+        if (mode === 'test') {
+          testResults.push({ word: currentWord.hebrew, correct: false });
+          setTimeout(nextWord, 1000);
+        }
       }
+      updateProgress();
     });
 
     document.getElementById("giveUpBtn").addEventListener("click", () => {
       feedback.textContent = `💡 The correct spelling: ${currentWord.english}`;
       feedback.className = "mt-4 text-blue-600 text-center";
-      correctCount[currentWord.hebrew] = 0;
+
+      if (mode === 'train') correctCount[currentWord.hebrew] = 0;
+      if (mode === 'test') testResults.push({ word: currentWord.hebrew, correct: false });
+
       setTimeout(nextWord, 1500);
+      updateProgress();
     });
   </script>
 </body>
