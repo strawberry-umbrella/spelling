@@ -4,58 +4,164 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spelling Trainer</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <style>
   body {
     font-family: 'Segoe UI', sans-serif;
-    background: #f5f6fa;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
     text-align: center;
     padding: 20px;
+    min-height: 100vh;
+    margin: 0;
   }
-  h1 { color: #333; }
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  h1 { 
+    color: #333; 
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    margin-top: 0;
+  }
   .hidden { display: none; }
+  .progress-container {
+    margin: 20px 0;
+  }
   .progress {
-    width: 80%;
-    height: 20px;
-    background: #ddd;
+    width: 100%;
+    height: 25px;
+    background: #e0e0e0;
     margin: 10px auto;
-    border-radius: 10px;
+    border-radius: 15px;
     overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
   }
   .progress-fill {
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #ff4d4d, #ffa64d, #4dff4d);
     transition: width 0.5s;
+    border-radius: 15px;
+  }
+  .progress-text {
+    margin: 10px 0;
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+  }
+  .word-progress {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #666;
+    font-weight: 600;
   }
   .circle-progress {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
-    border: 6px solid #ccc;
-    margin: 10px auto;
+    border: 8px solid #ccc;
+    margin: 15px auto;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
   }
-  .circle-progress::after {
+  .circle-progress::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: conic-gradient(red 0%, orange 33%, yellow 66%, green 100%);
-    clip-path: polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 0);
+    border: 8px solid transparent;
+    border-top-color: var(--circle-color, #ff4d4d);
     transform: rotate(-90deg);
-    mask: radial-gradient(closest-side, transparent 75%, black 76%);
-    transition: background 0.5s;
+    transition: border-top-color 0.3s;
   }
   input, select, button {
     font-size: 16px;
     margin: 5px;
-    padding: 6px 10px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    transition: all 0.3s;
   }
-  #result { font-weight: bold; margin: 10px; }
+  input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+  }
+  button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  }
+  button:active {
+    transform: translateY(0);
+  }
+  #giveUpBtn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    margin-left: 10px;
+  }
+  #result { 
+    font-weight: bold; 
+    margin: 15px;
+    font-size: 18px;
+    min-height: 30px;
+  }
+  #hebrewWord {
+    font-size: 32px;
+    margin: 20px 0;
+    color: #333;
+    font-weight: bold;
+  }
+  .music-selector {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 10px;
+  }
+  .music-controls {
+    margin-top: 10px;
+  }
+  .music-controls button {
+    padding: 8px 15px;
+    font-size: 14px;
+    margin: 5px;
+  }
+  .emoji-large {
+    font-size: 48px;
+    display: block;
+    margin: 10px 0;
+    animation: bounce 0.6s ease;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
 </style>
 </head>
 <body>
-
+<div class="container">
 <h1>Spelling Trainer</h1>
 
 <div id="fileSelector">
@@ -71,20 +177,39 @@
 </div>
 
 <div id="modeSelector" class="hidden">
+  <div class="music-selector">
+    <p><strong>Choose Background Music (Optional):</strong></p>
+    <select id="musicSelect">
+      <option value="">No Music</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">SoundHelix Song 1</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">SoundHelix Song 2</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">SoundHelix Song 3</option>
+    </select>
+    <div class="music-controls">
+      <button id="playMusicBtn" onclick="toggleMusic()">Play Music</button>
+      <button id="stopMusicBtn" onclick="stopMusic()">Stop Music</button>
+    </div>
+  </div>
   <button onclick="startGame('training')">Training Mode</button>
   <button onclick="startGame('test')">Test Mode</button>
 </div>
 
 <div id="game" class="hidden">
-  <div class="progress"><div id="progressBar" class="progress-fill"></div></div>
-  <div class="circle-progress" id="circleProgress"></div>
+  <div class="progress-container">
+    <div class="progress-text" id="progressText">Progress: 0/0</div>
+    <div class="progress"><div id="progressBar" class="progress-fill"></div></div>
+    <div class="word-progress" id="wordProgress"></div>
+  </div>
+  <div class="circle-progress" id="circleProgress">0/3</div>
   <h3 id="hebrewWord"></h3>
   <input type="text" id="answer" placeholder="Type the English word">
   <button id="submitBtn" onclick="submitAnswer()">Submit</button>
+  <button id="giveUpBtn" onclick="giveUp()">Give Up</button>
   <div id="result"></div>
 </div>
 
 <button id="startOverBtn" class="hidden" onclick="startOver()">Start Over</button>
+</div>
 
 <script>
 let words = [];
@@ -93,6 +218,10 @@ let correctCount = {};
 let mode = '';
 let mastered = new Set();
 let startTime;
+let currentWord = null;
+let currentEnglish = null;
+let audio = null;
+let isMusicPlaying = false;
 
 document.getElementById('predefinedSelect').addEventListener('change', e => {
   const file = e.target.value;
@@ -118,6 +247,43 @@ function loadCSVData(data) {
   document.getElementById('modeSelector').classList.remove('hidden');
 }
 
+function toggleMusic() {
+  const musicUrl = document.getElementById('musicSelect').value;
+  if (!musicUrl) {
+    alert('Please select a music track first!');
+    return;
+  }
+  
+  if (!audio || audio.src !== musicUrl) {
+    if (audio) {
+      audio.pause();
+      audio = null;
+    }
+    audio = new Audio(musicUrl);
+    audio.loop = true;
+    audio.volume = 0.3;
+  }
+  
+  if (isMusicPlaying) {
+    audio.pause();
+    isMusicPlaying = false;
+    document.getElementById('playMusicBtn').textContent = 'Play Music';
+  } else {
+    audio.play().catch(e => console.log('Music play failed:', e));
+    isMusicPlaying = true;
+    document.getElementById('playMusicBtn').textContent = 'Pause Music';
+  }
+}
+
+function stopMusic() {
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+    isMusicPlaying = false;
+    document.getElementById('playMusicBtn').textContent = 'Play Music';
+  }
+}
+
 function startGame(selectedMode) {
   mode = selectedMode;
   currentIndex = 0;
@@ -127,16 +293,37 @@ function startGame(selectedMode) {
   document.getElementById('modeSelector').classList.add('hidden');
   document.getElementById('game').classList.remove('hidden');
   document.getElementById('startOverBtn').classList.remove('hidden');
+  
+  // Start music if selected and not playing
+  const musicUrl = document.getElementById('musicSelect').value;
+  if (musicUrl && !isMusicPlaying) {
+    if (!audio || audio.src !== musicUrl) {
+      audio = new Audio(musicUrl);
+      audio.loop = true;
+      audio.volume = 0.3;
+    }
+    audio.play().catch(e => console.log('Music play failed:', e));
+    isMusicPlaying = true;
+    document.getElementById('playMusicBtn').textContent = 'Pause Music';
+  }
+  
   showWord();
 }
 
 function showWord() {
+  let hebrew, english;
   if (mode === 'training') {
     const remaining = words.filter(([h, e]) => !mastered.has(e));
     if (!remaining.length) {
       document.getElementById('hebrewWord').textContent = '🎉 All words mastered!';
       document.getElementById('answer').classList.add('hidden');
       document.getElementById('submitBtn').classList.add('hidden');
+      document.getElementById('giveUpBtn').classList.add('hidden');
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
       return;
     }
     const randomIndex = Math.floor(Math.random() * remaining.length);
@@ -145,6 +332,9 @@ function showWord() {
     if (currentIndex >= words.length) return showResults();
     [hebrew, english] = words[currentIndex];
   }
+  
+  currentWord = hebrew;
+  currentEnglish = english;
   document.getElementById('hebrewWord').textContent = hebrew;
   const answerInput = document.getElementById('answer');
   answerInput.value = '';
@@ -156,35 +346,52 @@ function showWord() {
 
 function updateProgress() {
   const total = words.length;
-  const done = (mode === 'training') ? mastered.size : currentIndex;
-  document.getElementById('progressBar').style.width = `${(done / total) * 100}%`;
-
-  const word = words[currentIndex]?.[1];
-  const attempts = correctCount[word] || 0;
-  const circle = document.getElementById('circleProgress');
-  const colors = ['red', 'orange', 'green'];
-  circle.style.borderColor = colors[Math.min(attempts, 2)];
+  let done, remaining;
+  
+  if (mode === 'training') {
+    done = mastered.size;
+    remaining = words.filter(([h, e]) => !mastered.has(e)).length;
+  } else {
+    done = currentIndex;
+    remaining = total - currentIndex;
+  }
+  
+  const progressPercent = total > 0 ? (done / total) * 100 : 0;
+  document.getElementById('progressBar').style.width = `${progressPercent}%`;
+  document.getElementById('progressText').textContent = `Progress: ${done}/${total} (${remaining} remaining)`;
+  
+  // Update word-specific progress
+  if (currentEnglish) {
+    const attempts = correctCount[currentEnglish] || 0;
+    const attemptsNeeded = mode === 'training' ? 3 : 1;
+    const attemptsLeft = Math.max(0, attemptsNeeded - attempts);
+    
+    document.getElementById('wordProgress').textContent = 
+      mode === 'training' 
+        ? `Correct attempts for this word: ${attempts}/3 (${attemptsLeft} more needed)`
+        : `Word ${currentIndex + 1} of ${total}`;
+    
+    // Update circle progress
+    const circle = document.getElementById('circleProgress');
+    if (mode === 'training') {
+      circle.textContent = `${attempts}/3`;
+      const colors = ['#ff4d4d', '#ffa64d', '#4dff4d'];
+      circle.style.setProperty('--circle-color', colors[Math.min(attempts, 2)]);
+      circle.style.borderTopColor = colors[Math.min(attempts, 2)];
+    } else {
+      circle.textContent = `${currentIndex + 1}/${total}`;
+      circle.style.setProperty('--circle-color', '#667eea');
+      circle.style.borderTopColor = '#667eea';
+    }
+  }
 }
 
-function submitAnswer() {
-  const answer = document.getElementById('answer').value.trim().toLowerCase();
-  const [hebrew, english] = (mode === 'training')
-    ? words.find(([h, e]) => h === document.getElementById('hebrewWord').textContent)
-    : words[currentIndex];
+function giveUp() {
+  if (!currentEnglish) return;
   
-  if (!answer) return;
-
-  if (answer === english.toLowerCase()) {
-    correctCount[english] = (correctCount[english] || 0) + 1;
-    if (mode === 'training') {
-      if (correctCount[english] >= 3) mastered.add(english);
-    }
-    document.getElementById('result').textContent = '✅ Correct!';
-  } else {
-    document.getElementById('result').textContent = `❌ Incorrect. Correct: ${english}`;
-    correctCount[english] = 0;
-  }
-
+  document.getElementById('result').innerHTML = `<span class="emoji-large">😔</span><br>Correct answer: <strong>${currentEnglish}</strong>`;
+  correctCount[currentEnglish] = 0;
+  
   setTimeout(() => {
     document.getElementById('result').textContent = '';
     if (mode === 'training') {
@@ -194,17 +401,81 @@ function submitAnswer() {
       if (currentIndex < words.length) showWord();
       else showResults();
     }
-  }, 1000);
+  }, 2000);
+}
+
+function submitAnswer() {
+  const answer = document.getElementById('answer').value.trim().toLowerCase();
+  
+  if (!answer || !currentEnglish) return;
+  
+  const resultDiv = document.getElementById('result');
+  const wasMastered = mode === 'training' && correctCount[currentEnglish] >= 2 && correctCount[currentEnglish] < 3;
+  
+  if (answer === currentEnglish.toLowerCase()) {
+    correctCount[currentEnglish] = (correctCount[currentEnglish] || 0) + 1;
+    
+    if (mode === 'training') {
+      if (correctCount[currentEnglish] >= 3) {
+        mastered.add(currentEnglish);
+        resultDiv.innerHTML = `<span class="emoji-large">🎉</span><br>✅ Correct! Word mastered!`;
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']
+        });
+      } else if (correctCount[currentEnglish] === 2) {
+        resultDiv.innerHTML = `<span class="emoji-large">🌟</span><br>✅ Correct! One more time to master!`;
+      } else if (correctCount[currentEnglish] === 1) {
+        resultDiv.innerHTML = `<span class="emoji-large">👍</span><br>✅ Correct! Keep going!`;
+      } else {
+        resultDiv.innerHTML = `✅ Correct!`;
+      }
+    } else {
+      resultDiv.innerHTML = `<span class="emoji-large">✅</span><br>Correct!`;
+    }
+  } else {
+    resultDiv.innerHTML = `<span class="emoji-large">💩</span><br>❌ Incorrect. Correct: <strong>${currentEnglish}</strong>`;
+    correctCount[currentEnglish] = 0;
+  }
+  
+  updateProgress();
+  
+  setTimeout(() => {
+    resultDiv.textContent = '';
+    if (mode === 'training') {
+      showWord();
+    } else {
+      currentIndex++;
+      if (currentIndex < words.length) showWord();
+      else showResults();
+    }
+  }, mode === 'training' && correctCount[currentEnglish] >= 3 ? 2500 : 1500);
 }
 
 function showResults() {
+  if (audio) {
+    audio.pause();
+    isMusicPlaying = false;
+  }
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   const score = Object.keys(correctCount).filter(e => correctCount[e] > 0).length;
   document.getElementById('game').innerHTML =
-    `<h2>Test Completed!</h2><p>Score: ${score}/${words.length}</p><p>Time: ${elapsed} sec</p>`;
+    `<h2>Test Completed! 🎉</h2><p>Score: ${score}/${words.length}</p><p>Time: ${elapsed} sec</p>`;
+  confetti({
+    particleCount: 200,
+    spread: 100,
+    origin: { y: 0.6 }
+  });
 }
 
 function startOver() {
+  if (audio) {
+    audio.pause();
+    audio = null;
+    isMusicPlaying = false;
+  }
   document.location.reload();
 }
 
