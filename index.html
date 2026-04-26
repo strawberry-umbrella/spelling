@@ -90,6 +90,17 @@ document.getElementById('csvFile').addEventListener('change', e => {
 });
 
 async function loadSelectedCSVs() {
+  const checkboxes = document.querySelectorAll('#csvCheckboxes input[type="checkbox"]:checked');
+  const files = Array.from(checkboxes).map(cb => cb.value);
+  
+  const requests = files.map(filename => 
+    // Using a relative path 'words/' instead of '/words/'
+    fetch(`words/${filename}`).then(res => {
+      if (!res.ok) throw new Error(`File ${filename} not found at words/${filename}`);
+      return res.text();
+    })
+  );
+    
   const select = document.getElementById('predefinedSelect');
   const selectedFiles = Array.from(select.selectedOptions).map(opt => opt.value);
   
