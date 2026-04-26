@@ -214,11 +214,20 @@ async function loadSelectedCSVs() {
 
   try {
     const results = await Promise.all(
-      files.map(f => fetch(`words/${f}`).then(res => res.text()))
+      files.map(async (f) => {
+        const url = `words/${f}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+           // This will tell you EXACTLY which URL failed
+           throw new Error(`Could not find file at: ${window.location.href}${url}`);
+        }
+        return res.text();
+      })
     );
     parseCSVData(results.join('\n'));
   } catch (err) {
-    alert("Error loading CSV files. Check file paths.");
+    alert(err.message);
+    console.error(err);
   }
 }
 
