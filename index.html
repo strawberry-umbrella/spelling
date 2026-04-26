@@ -3,49 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Multiselect Loader</title>
+    <title>Spelling Trainer</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Load Words from CSV Files</h1>
-    <label for="csvSelect">Select CSV Files:</label>
-    <select id="csvSelect" multiple>
-        <!-- CSV files will be populated here -->
-    </select>
-    <button id="loadBtn">Load Selected CSVs</button>
-
-    <script>
-        // Function to dynamically load CSV files from the words directory
-        window.onload = function() {
-            const csvSelect = document.getElementById('csvSelect');
-            const wordsDirectory = 'words'; // path to words directory
-
-            // Fetch available CSV files from the server
-            fetch(wordsDirectory)
-                .then(response => response.text())
-                .then(data => {
-                    const parser = new DOMParser();
-                    const htmlDoc = parser.parseFromString(data, 'text/html');
-                    const links = htmlDoc.querySelectorAll('a');
-                    links.forEach(link => {
-                        const fileName = link.getAttribute('href');
-                        if (fileName.endsWith('.csv')) {
-                            const option = document.createElement('option');
-                            option.value = fileName;
-                            option.textContent = fileName;
-                            csvSelect.appendChild(option);
-                        }
-                    });
-                });
-        };
-
-        document.getElementById('loadBtn').onclick = function() {
-            const selectedOptions = document.getElementById('csvSelect').selectedOptions;
-            const selectedFiles = Array.from(selectedOptions).map(option => option.value);
-
-            // Handle loading the union of multiple selected CSVs here
-            console.log('Loading CSV files:', selectedFiles);
-            // Additional logic to process the files as needed...
-        };
-    </script>
+    <header>
+        <h1>Spelling Trainer</h1>
+    </header>
+    <main>
+        <div id="gameModes">
+            <h2>Select Game Mode</h2>
+            <button onclick="startGame('practice')">Practice Mode</button>
+            <button onclick="startGame('test')">Test Mode</button>
+        </div>
+        <div id="csvLoader">
+            <h2>Load Words</h2>
+            <input type="file" id="fileInput" accept="text/csv">
+            <button onclick="loadCSV()">Load CSV</button>
+        </div>
+        <div id="progressTracker">
+            <h2>Progress Tracker</h2>
+            <p id="progress">0%</p>
+        </div>
+    </main>
+    <audio id="backgroundMusic" controls>
+        <source src="music.mp3" type="audio/mpeg">
+        Your browser does not support the audio tag.
+    </audio>
+    <script src="script.js"></script>
 </body>
 </html>
