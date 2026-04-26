@@ -4,32 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spelling Trainer</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; }
+        #app { max-width: 600px; margin: auto; padding: 20px; }
+        .hidden { display: none; }
+        .animation { transition: all 0.5s; }
+    </style>
 </head>
 <body>
-    <header>
+    <div id="app">
         <h1>Spelling Trainer</h1>
-    </header>
-    <main>
-        <div id="gameModes">
-            <h2>Select Game Mode</h2>
-            <button onclick="startGame('practice')">Practice Mode</button>
-            <button onclick="startGame('test')">Test Mode</button>
+        <div>
+            <label for="wordSelect">Select Words:</label>
+            <select id="wordSelect" multiple>
+                <!-- Options will be populated from CSV file -->
+            </select>
         </div>
-        <div id="csvLoader">
-            <h2>Load Words</h2>
-            <input type="file" id="fileInput" accept="text/csv">
-            <button onclick="loadCSV()">Load CSV</button>
-        </div>
-        <div id="progressTracker">
+        <button id="loadWords">Load Words</button>
+        <button id="startTraining" class="hidden">Start Training</button>
+        <div id="progress" class="hidden">
             <h2>Progress Tracker</h2>
-            <p id="progress">0%</p>
+            <p id="progressText">0/0 correct</p>
         </div>
-    </main>
-    <audio id="backgroundMusic" controls>
-        <source src="music.mp3" type="audio/mpeg">
-        Your browser does not support the audio tag.
-    </audio>
-    <script src="script.js"></script>
+    </div>
+    <script>
+        document.getElementById('loadWords').addEventListener('click', loadWords);
+        document.getElementById('startTraining').addEventListener('click', startTraining);
+        let words = [];
+        let correctCount = 0;
+
+        function loadWords() {
+            // Load CSV file from words directory
+            fetch('words/words.csv')
+                .then(response => response.text())
+                .then(data => {
+                    words = parseCSV(data);
+                    populateSelect(words);
+                    document.getElementById('startTraining').classList.remove('hidden');
+                });
+        }
+
+        function parseCSV(data) {
+            const lines = data.split('\n');
+            return lines.map(line => line.split(','));
+        }
+
+        function populateSelect(words) {
+            const select = document.getElementById('wordSelect');
+            select.innerHTML = '';
+            words.forEach((word, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = word[0];
+                select.appendChild(option);
+            });
+        }
+
+        function startTraining() {
+            const selectedOptions = [...document.getElementById('wordSelect').selectedOptions];
+            const selectedWords = selectedOptions.map(option => words[option.value][0]);
+            correctCount = 0;
+            document.getElementById('progress').classList.remove('hidden');
+            document.getElementById('progressText').textContent = `0/${selectedWords.length} correct`;
+            // Further implementation of training mode goes here
+        }
+
+        // Add necessary animations and further logic
+    </script>
 </body>
 </html>
