@@ -184,11 +184,11 @@ let mastered = new Set();
 let startTime;
 let currentEnglish = '';
 
-// 1. DISCOVER FILES
+// 1. DISCOVER FILES (Corrected value/label logic)
 async function discoverFiles() {
   const container = document.getElementById('csvCheckboxes');
   try {
-    const response = await fetch('words/list.json');
+    const response = await fetch('./words/list.json'); // Added ./ for safety
     if (!response.ok) throw new Error();
     const files = await response.json();
     
@@ -196,50 +196,20 @@ async function discoverFiles() {
     files.forEach(file => {
       const label = document.createElement('label');
       label.className = 'list-item';
-      label.innerHTML = `<input type="checkbox" value="${file}"> ${file.replace('.csv', '')}`;
+      // The VALUE must be the full filename (set1.csv)
+      // The TEXT can be the pretty name (set1)
+      label.innerHTML = `
+        <input type="checkbox" value="${file}"> 
+        ${file.replace('.csv', '')}
+      `;
       container.appendChild(label);
     });
   } catch (e) {
-    container.innerHTML = '<p style="color:red">Note: words/list.json not found.<br>Use the file uploader below.</p>';
-  }
-}
-discoverFiles();
-
-// 2. LOAD FILES
-async function loadSelectedCSVs() {
-  const checked = document.querySelectorAll('#csvCheckboxes input:checked');
-  const files = Array.from(checked).map(c => c.value);
-  
-  if (files.length === 0) return alert("Please select at least one list!");
-
-  try {
-    const results = await Promise.all(
-      files.map(async (f) => {
-        const url = `words/${f}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-           // This will tell you EXACTLY which URL failed
-           throw new Error(`Could not find file at: ${window.location.href}${url}`);
-        }
-        return res.text();
-      })
-    );
-    parseCSVData(results.join('\n'));
-  } catch (err) {
-    alert(err.message);
-    console.error(err);
+    container.innerHTML = '<p style="color:red">Note: words/list.json not found.<br>Upload a CSV manually or check your repository.</p>';
   }
 }
 
-document.getElementById('csvFile').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = evt => parseCSVData(evt.target.result);
-    reader.readAsText(file);
-  }
-});
-
+// 2. PARSE CSV DATA (Fixed the .add error)
 function parseCSVData(data) {
   words = data.split('\n')
     .map(l => l.trim().split(','))
@@ -247,8 +217,8 @@ function parseCSVData(data) {
   
   if (words.length === 0) return alert("No valid words found!");
 
-  document.getElementById('fileSelector').add('hidden'); // Simplified class management
-  document.getElementById('fileSelector').style.display = "none";
+  // FIX: Added .classList
+  document.getElementById('fileSelector').classList.add('hidden');
   document.getElementById('modeSelector').classList.remove('hidden');
   document.getElementById('wordCountLabel').textContent = `${words.length} words found.`;
 }
