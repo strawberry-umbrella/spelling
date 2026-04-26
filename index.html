@@ -1,62 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spelling Trainer</title>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelling Trainer</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --primary-bg: #667eea;
+    --secondary-bg: #764ba2;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    text-align: center;
+    padding: 20px;
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    margin-top: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+
+  h1 { color: #333; margin-bottom: 20px; }
+  
+  .hidden { display: none !important; }
+
+  /* Selection Box Styles */
+  .list-container {
+    text-align: left;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 12px;
+    margin: 20px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 2px solid #eee;
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+
+  .list-item:last-child { border-bottom: none; }
+  .list-item input { margin-right: 12px; transform: scale(1.2); }
+
+  /* Buttons */
+  button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.2s;
+    margin: 10px 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+  button:active { transform: translateY(0); }
+
+  #giveUpBtn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+
+  /* Game Elements */
+  #hebrewWord { font-size: 42px; margin: 20px 0; color: #222; }
+  
+  #answer {
+    font-size: 20px;
+    padding: 12px;
+    width: 80%;
+    border-radius: 8px;
+    border: 2px solid #ddd;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .progress-container { margin: 20px 0; }
+  .progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    transition: width 0.4s ease;
+  }
+
+  .circle-progress {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 5px solid #667eea;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+
+  #result { font-weight: bold; font-size: 18px; margin-top: 15px; min-height: 40px; }
+  .emoji-large { font-size: 40px; display: block; margin-bottom: 10px; }
+</style>
 </head>
 <body>
+
 <div class="container">
-<h1>Spelling Trainer</h1>
+  <h1>Spelling Trainer</h1>
 
-<div id="fileSelector">
-  <p>Choose word lists (Hold Ctrl/Cmd to multi-select):</p>
-  <select id="predefinedSelect" multiple size="3">
-    <option value="words/set1.csv">Set 1</option>
-    <option value="words/set2.csv">Set 2</option>
-    <option value="words/set3.csv">Set 3</option>
-  </select>
-  <br>
-  <button onclick="loadSelectedCSVs()">Load Selected Lists</button>
-  
-  <p>Or upload your own CSV:</p>
-  <input type="file" id="csvFile" accept=".csv">
-</div>
-
-<div id="modeSelector" class="hidden">
-  <div class="music-selector">
-    <p><strong>Choose Background Music (Optional):</strong></p>
-    <select id="musicSelect">
-      <option value="">No Music</option>
-      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">SoundHelix Song 1</option>
-      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">SoundHelix Song 2</option>
-      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">SoundHelix Song 3</option>
-    </select>
-    <div class="music-controls">
-      <button id="playMusicBtn" onclick="toggleMusic()">Play Music</button>
-      <button id="stopMusicBtn" onclick="stopMusic()">Stop Music</button>
+  <div id="fileSelector">
+    <p>Select word lists to practice:</p>
+    <div id="csvCheckboxes" class="list-container">
+      Fetching lists...
     </div>
+    <button onclick="loadSelectedCSVs()">Load Selected</button>
+    <p style="font-size: 12px; color: #666;">- OR -</p>
+    <input type="file" id="csvFile" accept=".csv">
   </div>
-  <button onclick="startGame('training')">Training Mode</button>
-  <button onclick="startGame('test')">Test Mode</button>
-</div>
 
-<div id="game" class="hidden">
-  <div class="progress-container">
-    <div class="progress-text" id="progressText">Progress: 0/0</div>
-    <div class="progress"><div id="progressBar" class="progress-fill"></div></div>
-    <div class="word-progress" id="wordProgress"></div>
+  <div id="modeSelector" class="hidden">
+    <h3>Words Loaded!</h3>
+    <p id="wordCountLabel"></p>
+    <button onclick="startGame('training')">Training Mode (3x per word)</button>
+    <button onclick="startGame('test')">Test Mode (1x per word)</button>
   </div>
-  <div class="circle-progress" id="circleProgress">0/3</div>
-  <h3 id="hebrewWord"></h3>
-  <input type="text" id="answer" placeholder="Type the English word">
-  <button id="submitBtn" onclick="submitAnswer()">Submit</button>
-  <button id="giveUpBtn" onclick="giveUp()">Give Up</button>
-  <div id="result"></div>
-</div>
 
-<button id="startOverBtn" class="hidden" onclick="startOver()">Start Over</button>
+  <div id="game" class="hidden">
+    <div class="progress-container">
+      <div id="progressText" style="margin-bottom:5px; font-size: 14px;">Progress: 0/0</div>
+      <div class="progress-bar"><div id="progressBar" class="progress-fill"></div></div>
+    </div>
+    
+    <div class="circle-progress" id="circleProgress">0/3</div>
+    
+    <h2 id="hebrewWord"></h2>
+    <input type="text" id="answer" placeholder="Type in English..." autofocus>
+    <br>
+    <button onclick="submitAnswer()">Submit</button>
+    <button id="giveUpBtn" onclick="giveUp()">I Don't Know</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <button id="startOverBtn" class="hidden" onclick="location.reload()">Start Over</button>
 </div>
 
 <script>
@@ -66,309 +182,158 @@ let correctCount = {};
 let mode = '';
 let mastered = new Set();
 let startTime;
-let currentWord = null;
-let currentEnglish = null;
-let audio = null;
-let isMusicPlaying = false;
+let currentEnglish = '';
 
-document.getElementById('predefinedSelect').addEventListener('change', e => {
-  const file = e.target.value;
-  if (file) {
-    fetch(file)
-      .then(res => res.text())
-      .then(loadCSVData);
+// 1. DISCOVER FILES
+async function discoverFiles() {
+  const container = document.getElementById('csvCheckboxes');
+  try {
+    const response = await fetch('words/list.json');
+    if (!response.ok) throw new Error();
+    const files = await response.json();
+    
+    container.innerHTML = ''; 
+    files.forEach(file => {
+      const label = document.createElement('label');
+      label.className = 'list-item';
+      label.innerHTML = `<input type="checkbox" value="${file}"> ${file.replace('.csv', '')}`;
+      container.appendChild(label);
+    });
+  } catch (e) {
+    container.innerHTML = '<p style="color:red">Note: words/list.json not found.<br>Use the file uploader below.</p>';
   }
-});
+}
+discoverFiles();
+
+// 2. LOAD FILES
+async function loadSelectedCSVs() {
+  const checked = document.querySelectorAll('#csvCheckboxes input:checked');
+  const files = Array.from(checked).map(c => c.value);
+  
+  if (files.length === 0) return alert("Please select at least one list!");
+
+  try {
+    const results = await Promise.all(
+      files.map(f => fetch(`words/${f}`).then(res => res.text()))
+    );
+    parseCSVData(results.join('\n'));
+  } catch (err) {
+    alert("Error loading CSV files. Check file paths.");
+  }
+}
 
 document.getElementById('csvFile').addEventListener('change', e => {
   const file = e.target.files[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = evt => loadCSVData(evt.target.result);
+    reader.onload = evt => parseCSVData(evt.target.result);
     reader.readAsText(file);
   }
 });
 
-async function loadSelectedCSVs() {
-  const checkboxes = document.querySelectorAll('#csvCheckboxes input[type="checkbox"]:checked');
-  const files = Array.from(checkboxes).map(cb => cb.value);
+function parseCSVData(data) {
+  words = data.split('\n')
+    .map(l => l.trim().split(','))
+    .filter(a => a.length >= 2);
   
-  const requests = files.map(filename => 
-    // Using a relative path 'words/' instead of '/words/'
-    fetch(`words/${filename}`).then(res => {
-      if (!res.ok) throw new Error(`File ${filename} not found at words/${filename}`);
-      return res.text();
-    })
-  );
-    
-  const select = document.getElementById('predefinedSelect');
-  const selectedFiles = Array.from(select.selectedOptions).map(opt => opt.value);
-  
-  if (selectedFiles.length === 0) {
-    alert('Please select at least one list!');
-    return;
-  }
+  if (words.length === 0) return alert("No valid words found!");
 
-  // Fetch all selected files
-  try {
-    const responses = await Promise.all(selectedFiles.map(file => fetch(file).then(r => r.text())));
-    
-    // Combine data
-    let combinedData = [];
-    responses.forEach(data => {
-      const parsed = data.split('\n').map(l => l.trim().split(',')).filter(a => a.length === 2);
-      combinedData.push(...parsed);
-    });
-    
-    // Set global words and proceed
-    words = combinedData;
-    document.getElementById('fileSelector').classList.add('hidden');
-    document.getElementById('modeSelector').classList.remove('hidden');
-  } catch (err) {
-    console.error('Error loading files:', err);
-    alert('Failed to load one or more CSV files. Make sure they exist in the "words" folder.');
-  }
+  document.getElementById('fileSelector').add('hidden'); // Simplified class management
+  document.getElementById('fileSelector').style.display = "none";
+  document.getElementById('modeSelector').classList.remove('hidden');
+  document.getElementById('wordCountLabel').textContent = `${words.length} words found.`;
 }
 
-function toggleMusic() {
-  const musicUrl = document.getElementById('musicSelect').value;
-  if (!musicUrl) {
-    alert('Please select a music track first!');
-    return;
-  }
-  
-  if (!audio || audio.src !== musicUrl) {
-    if (audio) {
-      audio.pause();
-      audio = null;
-    }
-    audio = new Audio(musicUrl);
-    audio.loop = true;
-    audio.volume = 0.3;
-  }
-  
-  if (isMusicPlaying) {
-    audio.pause();
-    isMusicPlaying = false;
-    document.getElementById('playMusicBtn').textContent = 'Play Music';
-  } else {
-    audio.play().catch(e => console.log('Music play failed:', e));
-    isMusicPlaying = true;
-    document.getElementById('playMusicBtn').textContent = 'Pause Music';
-  }
-}
-
-function stopMusic() {
-  if (audio) {
-    audio.pause();
-    audio.currentTime = 0;
-    isMusicPlaying = false;
-    document.getElementById('playMusicBtn').textContent = 'Play Music';
-  }
-}
-
+// 3. GAME LOGIC
 function startGame(selectedMode) {
   mode = selectedMode;
   currentIndex = 0;
-  correctCount = {};
   mastered.clear();
+  correctCount = {};
   startTime = Date.now();
+  
   document.getElementById('modeSelector').classList.add('hidden');
   document.getElementById('game').classList.remove('hidden');
   document.getElementById('startOverBtn').classList.remove('hidden');
-  
-  // Start music if selected and not playing
-  const musicUrl = document.getElementById('musicSelect').value;
-  if (musicUrl && !isMusicPlaying) {
-    if (!audio || audio.src !== musicUrl) {
-      audio = new Audio(musicUrl);
-      audio.loop = true;
-      audio.volume = 0.3;
-    }
-    audio.play().catch(e => console.log('Music play failed:', e));
-    isMusicPlaying = true;
-    document.getElementById('playMusicBtn').textContent = 'Pause Music';
-  }
-  
   showWord();
 }
 
 function showWord() {
-  let hebrew, english;
+  let hebrew;
   if (mode === 'training') {
-    const remaining = words.filter(([h, e]) => !mastered.has(e));
-    if (!remaining.length) {
-      document.getElementById('hebrewWord').textContent = '🎉 All words mastered!';
-      document.getElementById('answer').classList.add('hidden');
-      document.getElementById('submitBtn').classList.add('hidden');
-      document.getElementById('giveUpBtn').classList.add('hidden');
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-      return;
-    }
-    const randomIndex = Math.floor(Math.random() * remaining.length);
-    [hebrew, english] = remaining[randomIndex];
+    const pool = words.filter(w => !mastered.has(w[1]));
+    if (pool.length === 0) return finishGame();
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    hebrew = pick[0];
+    currentEnglish = pick[1];
   } else {
-    if (currentIndex >= words.length) return showResults();
-    [hebrew, english] = words[currentIndex];
+    if (currentIndex >= words.length) return finishGame();
+    hebrew = words[currentIndex][0];
+    currentEnglish = words[currentIndex][1];
   }
-  
-  currentWord = hebrew;
-  currentEnglish = english;
+
   document.getElementById('hebrewWord').textContent = hebrew;
-  const answerInput = document.getElementById('answer');
-  answerInput.value = '';
-  if (!answerInput.classList.contains('hidden')) {
-    answerInput.focus();
-  }
-  updateProgress();
-}
-
-function updateProgress() {
-  const total = words.length;
-  let done, remaining;
-  
-  if (mode === 'training') {
-    done = mastered.size;
-    remaining = words.filter(([h, e]) => !mastered.has(e)).length;
-  } else {
-    done = currentIndex;
-    remaining = total - currentIndex;
-  }
-  
-  const progressPercent = total > 0 ? (done / total) * 100 : 0;
-  document.getElementById('progressBar').style.width = `${progressPercent}%`;
-  document.getElementById('progressText').textContent = `Progress: ${done}/${total} (${remaining} remaining)`;
-  
-  // Update word-specific progress
-  if (currentEnglish) {
-    const attempts = correctCount[currentEnglish] || 0;
-    const attemptsNeeded = mode === 'training' ? 3 : 1;
-    const attemptsLeft = Math.max(0, attemptsNeeded - attempts);
-    
-    document.getElementById('wordProgress').textContent = 
-      mode === 'training' 
-        ? `Correct attempts for this word: ${attempts}/3 (${attemptsLeft} more needed)`
-        : `Word ${currentIndex + 1} of ${total}`;
-    
-    // Update circle progress
-    const circle = document.getElementById('circleProgress');
-    if (mode === 'training') {
-      circle.textContent = `${attempts}/3`;
-      const colors = ['#ff4d4d', '#ffa64d', '#4dff4d'];
-      circle.style.setProperty('--circle-color', colors[Math.min(attempts, 2)]);
-      circle.style.borderTopColor = colors[Math.min(attempts, 2)];
-    } else {
-      circle.textContent = `${currentIndex + 1}/${total}`;
-      circle.style.setProperty('--circle-color', '#667eea');
-      circle.style.borderTopColor = '#667eea';
-    }
-  }
-}
-
-function giveUp() {
-  if (!currentEnglish) return;
-  
-  document.getElementById('result').innerHTML = `<span class="emoji-large">😔</span><br>Correct answer: <strong>${currentEnglish}</strong>`;
-  correctCount[currentEnglish] = 0;
-  
-  setTimeout(() => {
-    document.getElementById('result').textContent = '';
-    if (mode === 'training') {
-      showWord();
-    } else {
-      currentIndex++;
-      if (currentIndex < words.length) showWord();
-      else showResults();
-    }
-  }, 2000);
+  document.getElementById('answer').value = '';
+  document.getElementById('answer').focus();
+  updateUI();
 }
 
 function submitAnswer() {
-  const answer = document.getElementById('answer').value.trim().toLowerCase();
-  
-  if (!answer || !currentEnglish) return;
-  
-  const resultDiv = document.getElementById('result');
-  const wasMastered = mode === 'training' && correctCount[currentEnglish] >= 2 && correctCount[currentEnglish] < 3;
-  
-  if (answer === currentEnglish.toLowerCase()) {
+  const userAns = document.getElementById('answer').value.trim().toLowerCase();
+  const target = currentEnglish.toLowerCase();
+  const resDiv = document.getElementById('result');
+
+  if (userAns === target) {
     correctCount[currentEnglish] = (correctCount[currentEnglish] || 0) + 1;
+    resDiv.innerHTML = '<span class="emoji-large">✅</span> Correct!';
     
-    if (mode === 'training') {
-      if (correctCount[currentEnglish] >= 3) {
-        mastered.add(currentEnglish);
-        resultDiv.innerHTML = `<span class="emoji-large">🎉</span><br>✅ Correct! Word mastered!`;
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']
-        });
-      } else if (correctCount[currentEnglish] === 2) {
-        resultDiv.innerHTML = `<span class="emoji-large">🌟</span><br>✅ Correct! One more time to master!`;
-      } else if (correctCount[currentEnglish] === 1) {
-        resultDiv.innerHTML = `<span class="emoji-large">👍</span><br>✅ Correct! Keep going!`;
-      } else {
-        resultDiv.innerHTML = `✅ Correct!`;
-      }
-    } else {
-      resultDiv.innerHTML = `<span class="emoji-large">✅</span><br>Correct!`;
+    if (mode === 'training' && correctCount[currentEnglish] >= 3) {
+      mastered.add(currentEnglish);
+      confetti({ particleCount: 50, spread: 60 });
     }
   } else {
-    resultDiv.innerHTML = `<span class="emoji-large">💩</span><br>❌ Incorrect. Correct: <strong>${currentEnglish}</strong>`;
     correctCount[currentEnglish] = 0;
+    resDiv.innerHTML = `<span class="emoji-large">❌</span> Wrong! It is: <strong>${currentEnglish}</strong>`;
   }
-  
-  updateProgress();
-  
+
   setTimeout(() => {
-    resultDiv.textContent = '';
-    if (mode === 'training') {
-      showWord();
-    } else {
-      currentIndex++;
-      if (currentIndex < words.length) showWord();
-      else showResults();
-    }
-  }, mode === 'training' && correctCount[currentEnglish] >= 3 ? 2500 : 1500);
+    resDiv.innerHTML = '';
+    if (mode === 'test') currentIndex++;
+    showWord();
+  }, 1800);
 }
 
-function showResults() {
-  if (audio) {
-    audio.pause();
-    isMusicPlaying = false;
-  }
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const score = Object.keys(correctCount).filter(e => correctCount[e] > 0).length;
-  document.getElementById('game').innerHTML =
-    `<h2>Test Completed! 🎉</h2><p>Score: ${score}/${words.length}</p><p>Time: ${elapsed} sec</p>`;
-  confetti({
-    particleCount: 200,
-    spread: 100,
-    origin: { y: 0.6 }
-  });
+function giveUp() {
+  document.getElementById('result').innerHTML = `The answer is: <strong>${currentEnglish}</strong>`;
+  correctCount[currentEnglish] = 0;
+  setTimeout(() => {
+    if (mode === 'test') currentIndex++;
+    showWord();
+    document.getElementById('result').innerHTML = '';
+  }, 2500);
 }
 
-function startOver() {
-  if (audio) {
-    audio.pause();
-    audio = null;
-    isMusicPlaying = false;
-  }
-  document.location.reload();
+function updateUI() {
+  const total = words.length;
+  const done = mode === 'training' ? mastered.size : currentIndex;
+  const pct = (done / total) * 100;
+  
+  document.getElementById('progressBar').style.width = `${pct}%`;
+  document.getElementById('progressText').textContent = `Words: ${done} / ${total}`;
+  
+  const count = correctCount[currentEnglish] || 0;
+  document.getElementById('circleProgress').textContent = mode === 'training' ? `${count}/3` : `${currentIndex + 1}`;
 }
 
-document.getElementById('answer').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    submitAnswer();
-  }
+function finishGame() {
+  const time = ((Date.now() - startTime) / 1000).toFixed(0);
+  document.getElementById('game').innerHTML = `<h2>Complete! 🎉</h2><p>You finished in ${time} seconds.</p>`;
+  confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+}
+
+document.getElementById('answer').addEventListener('keypress', e => {
+  if (e.key === 'Enter') submitAnswer();
 });
 </script>
-
 </body>
 </html>
