@@ -165,13 +165,15 @@
 <h1>Spelling Trainer</h1>
 
 <div id="fileSelector">
-  <p>Choose a word list:</p>
-  <select id="predefinedSelect">
-    <option value="">-- Select predefined list --</option>
-    <option value="set1.csv">Set 1</option>
-    <option value="set2.csv">Set 2</option>
-    <option value="set3.csv">Set 3</option>
+  <p>Choose word lists (Hold Ctrl/Cmd to multi-select):</p>
+  <select id="predefinedSelect" multiple size="3">
+    <option value="words/set1.csv">Set 1</option>
+    <option value="words/set2.csv">Set 2</option>
+    <option value="words/set3.csv">Set 3</option>
   </select>
+  <br>
+  <button onclick="loadSelectedCSVs()">Load Selected Lists</button>
+  
   <p>Or upload your own CSV:</p>
   <input type="file" id="csvFile" accept=".csv">
 </div>
@@ -241,10 +243,34 @@ document.getElementById('csvFile').addEventListener('change', e => {
   }
 });
 
-function loadCSVData(data) {
-  words = data.split('\n').map(l => l.trim().split(',')).filter(a => a.length === 2);
-  document.getElementById('fileSelector').classList.add('hidden');
-  document.getElementById('modeSelector').classList.remove('hidden');
+async function loadSelectedCSVs() {
+  const select = document.getElementById('predefinedSelect');
+  const selectedFiles = Array.from(select.selectedOptions).map(opt => opt.value);
+  
+  if (selectedFiles.length === 0) {
+    alert('Please select at least one list!');
+    return;
+  }
+
+  // Fetch all selected files
+  try {
+    const responses = await Promise.all(selectedFiles.map(file => fetch(file).then(r => r.text())));
+    
+    // Combine data
+    let combinedData = [];
+    responses.forEach(data => {
+      const parsed = data.split('\n').map(l => l.trim().split(',')).filter(a => a.length === 2);
+      combinedData.push(...parsed);
+    });
+    
+    // Set global words and proceed
+    words = combinedData;
+    document.getElementById('fileSelector').classList.add('hidden');
+    document.getElementById('modeSelector').classList.remove('hidden');
+  } catch (err) {
+    console.error('Error loading files:', err);
+    alert('Failed to load one or more CSV files. Make sure they exist in the "words" folder.');
+  }
 }
 
 function toggleMusic() {
