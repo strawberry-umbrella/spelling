@@ -7,38 +7,357 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app">
-        <header>
-            <h1>Spelling Trainer</h1>
-            <audio id="background-music" loop>
-                <source src="music/background.mp3" type="audio/mp3">
-                Your browser does not support the audio element.
-            </audio>
-            <button id="toggle-music">Toggle Music</button>
-        </header>
-        <main>
-            <section id="loading">
-                <h2>Load Your Words</h2>
-                <input type="file" id="file-input" multiple accept=".csv">
-                <button id="load-btn">Load Words</button>
-            </section>
-            <section id="training" class="hidden">
-                <h2>Training Mode</h2>
-                <button id="start-training">Start Training</button>
-                <div id="progress" class="hidden">
-                    <p>Progress: <span id="progress-tracker">0</span>%</p>
-                    <canvas id="confetti-canvas"></canvas>
-                </div>
-            </section>
-            <section id="testing" class="hidden">
-                <h2>Test Mode</h2>
-                <button id="start-test">Start Test</button>
-            </section>
-        </main>
-        <footer>
-            <p>&copy; 2026 Spelling Trainer</p>
-        </footer>
+<div class="container">
+<h1>Spelling Trainer</h1>
+
+<div id="fileSelector">
+  <p>Choose word lists (Hold Ctrl/Cmd to multi-select):</p>
+  <select id="predefinedSelect" multiple size="3">
+    <option value="words/set1.csv">Set 1</option>
+    <option value="words/set2.csv">Set 2</option>
+    <option value="words/set3.csv">Set 3</option>
+  </select>
+  <br>
+  <button onclick="loadSelectedCSVs()">Load Selected Lists</button>
+  
+  <p>Or upload your own CSV:</p>
+  <input type="file" id="csvFile" accept=".csv">
+</div>
+
+<div id="modeSelector" class="hidden">
+  <div class="music-selector">
+    <p><strong>Choose Background Music (Optional):</strong></p>
+    <select id="musicSelect">
+      <option value="">No Music</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">SoundHelix Song 1</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">SoundHelix Song 2</option>
+      <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3">SoundHelix Song 3</option>
+    </select>
+    <div class="music-controls">
+      <button id="playMusicBtn" onclick="toggleMusic()">Play Music</button>
+      <button id="stopMusicBtn" onclick="stopMusic()">Stop Music</button>
     </div>
-    <script src="script.js"></script>
+  </div>
+  <button onclick="startGame('training')">Training Mode</button>
+  <button onclick="startGame('test')">Test Mode</button>
+</div>
+
+<div id="game" class="hidden">
+  <div class="progress-container">
+    <div class="progress-text" id="progressText">Progress: 0/0</div>
+    <div class="progress"><div id="progressBar" class="progress-fill"></div></div>
+    <div class="word-progress" id="wordProgress"></div>
+  </div>
+  <div class="circle-progress" id="circleProgress">0/3</div>
+  <h3 id="hebrewWord"></h3>
+  <input type="text" id="answer" placeholder="Type the English word">
+  <button id="submitBtn" onclick="submitAnswer()">Submit</button>
+  <button id="giveUpBtn" onclick="giveUp()">Give Up</button>
+  <div id="result"></div>
+</div>
+
+<button id="startOverBtn" class="hidden" onclick="startOver()">Start Over</button>
+</div>
+
+<script>
+let words = [];
+let currentIndex = 0;
+let correctCount = {};
+let mode = '';
+let mastered = new Set();
+let startTime;
+let currentWord = null;
+let currentEnglish = null;
+let audio = null;
+let isMusicPlaying = false;
+
+document.getElementById('predefinedSelect').addEventListener('change', e => {
+  const file = e.target.value;
+  if (file) {
+    fetch(file)
+      .then(res => res.text())
+      .then(loadCSVData);
+  }
+});
+
+document.getElementById('csvFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = evt => loadCSVData(evt.target.result);
+    reader.readAsText(file);
+  }
+});
+
+async function loadSelectedCSVs() {
+  const select = document.getElementById('predefinedSelect');
+  const selectedFiles = Array.from(select.selectedOptions).map(opt => opt.value);
+  
+  if (selectedFiles.length === 0) {
+    alert('Please select at least one list!');
+    return;
+  }
+
+  // Fetch all selected files
+  try {
+    const responses = await Promise.all(selectedFiles.map(file => fetch(file).then(r => r.text())));
+    
+    // Combine data
+    let combinedData = [];
+    responses.forEach(data => {
+      const parsed = data.split('\n').map(l => l.trim().split(',')).filter(a => a.length === 2);
+      combinedData.push(...parsed);
+    });
+    
+    // Set global words and proceed
+    words = combinedData;
+    document.getElementById('fileSelector').classList.add('hidden');
+    document.getElementById('modeSelector').classList.remove('hidden');
+  } catch (err) {
+    console.error('Error loading files:', err);
+    alert('Failed to load one or more CSV files. Make sure they exist in the "words" folder.');
+  }
+}
+
+function toggleMusic() {
+  const musicUrl = document.getElementById('musicSelect').value;
+  if (!musicUrl) {
+    alert('Please select a music track first!');
+    return;
+  }
+  
+  if (!audio || audio.src !== musicUrl) {
+    if (audio) {
+      audio.pause();
+      audio = null;
+    }
+    audio = new Audio(musicUrl);
+    audio.loop = true;
+    audio.volume = 0.3;
+  }
+  
+  if (isMusicPlaying) {
+    audio.pause();
+    isMusicPlaying = false;
+    document.getElementById('playMusicBtn').textContent = 'Play Music';
+  } else {
+    audio.play().catch(e => console.log('Music play failed:', e));
+    isMusicPlaying = true;
+    document.getElementById('playMusicBtn').textContent = 'Pause Music';
+  }
+}
+
+function stopMusic() {
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+    isMusicPlaying = false;
+    document.getElementById('playMusicBtn').textContent = 'Play Music';
+  }
+}
+
+function startGame(selectedMode) {
+  mode = selectedMode;
+  currentIndex = 0;
+  correctCount = {};
+  mastered.clear();
+  startTime = Date.now();
+  document.getElementById('modeSelector').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  document.getElementById('startOverBtn').classList.remove('hidden');
+  
+  // Start music if selected and not playing
+  const musicUrl = document.getElementById('musicSelect').value;
+  if (musicUrl && !isMusicPlaying) {
+    if (!audio || audio.src !== musicUrl) {
+      audio = new Audio(musicUrl);
+      audio.loop = true;
+      audio.volume = 0.3;
+    }
+    audio.play().catch(e => console.log('Music play failed:', e));
+    isMusicPlaying = true;
+    document.getElementById('playMusicBtn').textContent = 'Pause Music';
+  }
+  
+  showWord();
+}
+
+function showWord() {
+  let hebrew, english;
+  if (mode === 'training') {
+    const remaining = words.filter(([h, e]) => !mastered.has(e));
+    if (!remaining.length) {
+      document.getElementById('hebrewWord').textContent = '🎉 All words mastered!';
+      document.getElementById('answer').classList.add('hidden');
+      document.getElementById('submitBtn').classList.add('hidden');
+      document.getElementById('giveUpBtn').classList.add('hidden');
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * remaining.length);
+    [hebrew, english] = remaining[randomIndex];
+  } else {
+    if (currentIndex >= words.length) return showResults();
+    [hebrew, english] = words[currentIndex];
+  }
+  
+  currentWord = hebrew;
+  currentEnglish = english;
+  document.getElementById('hebrewWord').textContent = hebrew;
+  const answerInput = document.getElementById('answer');
+  answerInput.value = '';
+  if (!answerInput.classList.contains('hidden')) {
+    answerInput.focus();
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = words.length;
+  let done, remaining;
+  
+  if (mode === 'training') {
+    done = mastered.size;
+    remaining = words.filter(([h, e]) => !mastered.has(e)).length;
+  } else {
+    done = currentIndex;
+    remaining = total - currentIndex;
+  }
+  
+  const progressPercent = total > 0 ? (done / total) * 100 : 0;
+  document.getElementById('progressBar').style.width = `${progressPercent}%`;
+  document.getElementById('progressText').textContent = `Progress: ${done}/${total} (${remaining} remaining)`;
+  
+  // Update word-specific progress
+  if (currentEnglish) {
+    const attempts = correctCount[currentEnglish] || 0;
+    const attemptsNeeded = mode === 'training' ? 3 : 1;
+    const attemptsLeft = Math.max(0, attemptsNeeded - attempts);
+    
+    document.getElementById('wordProgress').textContent = 
+      mode === 'training' 
+        ? `Correct attempts for this word: ${attempts}/3 (${attemptsLeft} more needed)`
+        : `Word ${currentIndex + 1} of ${total}`;
+    
+    // Update circle progress
+    const circle = document.getElementById('circleProgress');
+    if (mode === 'training') {
+      circle.textContent = `${attempts}/3`;
+      const colors = ['#ff4d4d', '#ffa64d', '#4dff4d'];
+      circle.style.setProperty('--circle-color', colors[Math.min(attempts, 2)]);
+      circle.style.borderTopColor = colors[Math.min(attempts, 2)];
+    } else {
+      circle.textContent = `${currentIndex + 1}/${total}`;
+      circle.style.setProperty('--circle-color', '#667eea');
+      circle.style.borderTopColor = '#667eea';
+    }
+  }
+}
+
+function giveUp() {
+  if (!currentEnglish) return;
+  
+  document.getElementById('result').innerHTML = `<span class="emoji-large">😔</span><br>Correct answer: <strong>${currentEnglish}</strong>`;
+  correctCount[currentEnglish] = 0;
+  
+  setTimeout(() => {
+    document.getElementById('result').textContent = '';
+    if (mode === 'training') {
+      showWord();
+    } else {
+      currentIndex++;
+      if (currentIndex < words.length) showWord();
+      else showResults();
+    }
+  }, 2000);
+}
+
+function submitAnswer() {
+  const answer = document.getElementById('answer').value.trim().toLowerCase();
+  
+  if (!answer || !currentEnglish) return;
+  
+  const resultDiv = document.getElementById('result');
+  const wasMastered = mode === 'training' && correctCount[currentEnglish] >= 2 && correctCount[currentEnglish] < 3;
+  
+  if (answer === currentEnglish.toLowerCase()) {
+    correctCount[currentEnglish] = (correctCount[currentEnglish] || 0) + 1;
+    
+    if (mode === 'training') {
+      if (correctCount[currentEnglish] >= 3) {
+        mastered.add(currentEnglish);
+        resultDiv.innerHTML = `<span class="emoji-large">🎉</span><br>✅ Correct! Word mastered!`;
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#9400d3']
+        });
+      } else if (correctCount[currentEnglish] === 2) {
+        resultDiv.innerHTML = `<span class="emoji-large">🌟</span><br>✅ Correct! One more time to master!`;
+      } else if (correctCount[currentEnglish] === 1) {
+        resultDiv.innerHTML = `<span class="emoji-large">👍</span><br>✅ Correct! Keep going!`;
+      } else {
+        resultDiv.innerHTML = `✅ Correct!`;
+      }
+    } else {
+      resultDiv.innerHTML = `<span class="emoji-large">✅</span><br>Correct!`;
+    }
+  } else {
+    resultDiv.innerHTML = `<span class="emoji-large">💩</span><br>❌ Incorrect. Correct: <strong>${currentEnglish}</strong>`;
+    correctCount[currentEnglish] = 0;
+  }
+  
+  updateProgress();
+  
+  setTimeout(() => {
+    resultDiv.textContent = '';
+    if (mode === 'training') {
+      showWord();
+    } else {
+      currentIndex++;
+      if (currentIndex < words.length) showWord();
+      else showResults();
+    }
+  }, mode === 'training' && correctCount[currentEnglish] >= 3 ? 2500 : 1500);
+}
+
+function showResults() {
+  if (audio) {
+    audio.pause();
+    isMusicPlaying = false;
+  }
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  const score = Object.keys(correctCount).filter(e => correctCount[e] > 0).length;
+  document.getElementById('game').innerHTML =
+    `<h2>Test Completed! 🎉</h2><p>Score: ${score}/${words.length}</p><p>Time: ${elapsed} sec</p>`;
+  confetti({
+    particleCount: 200,
+    spread: 100,
+    origin: { y: 0.6 }
+  });
+}
+
+function startOver() {
+  if (audio) {
+    audio.pause();
+    audio = null;
+    isMusicPlaying = false;
+  }
+  document.location.reload();
+}
+
+document.getElementById('answer').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    submitAnswer();
+  }
+});
+</script>
+
 </body>
 </html>
