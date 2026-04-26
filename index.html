@@ -208,7 +208,8 @@ async function discoverFiles() {
     container.innerHTML = '<p style="color:red">Note: words/list.json not found.<br>Upload a CSV manually or check your repository.</p>';
   }
 }
-
+discoverFiles();
+  
 // 2. PARSE CSV DATA (Fixed the .add error)
 function parseCSVData(data) {
   words = data.split('\n')
