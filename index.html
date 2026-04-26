@@ -224,6 +224,40 @@ function parseCSVData(data) {
   document.getElementById('wordCountLabel').textContent = `${words.length} words found.`;
 }
 
+async function loadSelectedCSVs() {
+  // 1. Get all checked boxes
+  const checked = document.querySelectorAll('#csvCheckboxes input:checked');
+  
+  // 2. Extract the filenames (e.g., "set1.csv")
+  const files = Array.from(checked).map(c => c.value);
+  
+  if (files.length === 0) {
+    return alert("Please select at least one list!");
+  }
+
+  try {
+    // 3. Fetch all files in parallel
+    const results = await Promise.all(
+      files.map(async (filename) => {
+        // Use a relative path to the 'words' folder
+        const response = await fetch(`./words/${filename}`);
+        if (!response.ok) {
+          throw new Error(`Could not find ${filename}`);
+        }
+        return response.text();
+      })
+    );
+    
+    // 4. Combine all the text data and send it to the parser
+    const combinedData = results.join('\n');
+    parseCSVData(combinedData);
+    
+  } catch (err) {
+    console.error(err);
+    alert("Error loading CSV files: " + err.message);
+  }
+}
+  
 // 3. GAME LOGIC
 function startGame(selectedMode) {
   mode = selectedMode;
