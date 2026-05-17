@@ -188,7 +188,7 @@ let currentEnglish = '';
 async function discoverFiles() {
   const container = document.getElementById('csvCheckboxes');
   try {
-    const response = await fetch('./words/list.json'); // Added ./ for safety
+    const response = await fetch(`./words/list.json?v=${Date.now()}`); // Added cache-busting
     if (!response.ok) throw new Error();
     const files = await response.json();
     
@@ -239,8 +239,8 @@ async function loadSelectedCSVs() {
     // 3. Fetch all files in parallel
     const results = await Promise.all(
       files.map(async (filename) => {
-        // Use a relative path to the 'words' folder
-        const response = await fetch(`./words/${filename}`);
+        // Use a relative path to the 'words' folder with cache-busting
+        const response = await fetch(`./words/${filename}?v=${Date.now()}`);
         if (!response.ok) {
           throw new Error(`Could not find ${filename}`);
         }
